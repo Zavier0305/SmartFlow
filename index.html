@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartFlow ToDo & Calendar Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', 'Noto Sans JP', sans-serif;
+            background-color: #f8fafc;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: #e2e8f0;
+            border: 1px solid #e2e8f0;
+            height: 100%; /* Fill container */
+        }
+
+        .calendar-day {
+            background-color: white;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            min-width: 0; /* Prevents grid blowouts */
+            overflow: hidden;
+        }
+
+        .calendar-day.drag-over {
+            background-color: #eff6ff;
+        }
+
+        .task-item {
+            cursor: grab;
+            transition: transform 0.1s, box-shadow 0.1s;
+        }
+
+        .calendar-task {
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            margin-bottom: 2px;
+            border-radius: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: grab;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        /* Genres */
+        .genre-study { background-color: #dbeafe; color: #1e40af; border-left: 3px solid #3b82f6; }
+        .genre-hobby { background-color: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b; }
+        .genre-life { background-color: #d1fae5; color: #065f46; border-left: 3px solid #10b981; }
+        .genre-other { background-color: #f1f5f9; color: #475569; border-left: 3px solid #94a3b8; }
+
+        .task-completed {
+            background-color: #f8fafc !important;
+            color: #cbd5e1 !important;
+            border-left-color: #e2e8f0 !important;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        /* Range indicator */
+        .task-range-start { border-top-right-radius: 0; border-bottom-right-radius: 0; margin-right: -4px; z-index: 1; }
+        .task-range-mid { border-radius: 0; margin-left: -4px; margin-right: -4px; z-index: 0; }
+        .task-range-end { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -4px; z-index: 1; }
+
+        .sidebar { width: 260px; border-right: 1px solid #e2e8f0; flex-shrink: 0; }
+        .overdue { color: #ef4444 !important; font-weight: 800; }
+        .sidebar-drop-zone.drag-over { background-color: #f1f5f9; border: 2px dashed #3b82f6; }
+        
+        .repeat-badge {
+            display: inline-block;
+            font-size: 8px;
+            padding: 0 3px;
+            background: rgba(0,0,0,0.1);
+            border-radius: 3px;
+            margin-right: 3px;
+        }
+
+        /* Fixed container for the grid to enable scrolling only when necessary */
+        .calendar-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0; /* Important for flex child to be scrollable */
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col">
+
+    <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shadow-sm z-10 flex-shrink-0">
+        <h1 class="text-lg font-bold text-slate-800 flex items-center">
+            <svg class="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+            SmartFlow
+        </h1>
+        <div class="flex items-center space-x-4">
+            <span id="currentMonthDisplay" class="text-md font-semibold text-slate-700"></span>
+            <div class="flex bg-slate-100 rounded-lg p-0.5">
+                <button onclick="changeMonth(-1)" class="p-1.5 hover:bg-white rounded-md transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </button>
+                <button onclick="changeMonth(1)" class="p-1.5 hover:bg-white rounded-md transition">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 flex overflow-hidden">
+        <!-- Sidebar: Smaller width for more calendar space -->
+        <aside class="sidebar bg-white flex flex-col">
+            <div class="p-4 border-b bg-slate-50">
+                <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center justify-between">
+                    <span>未割当</span>
+                    <span class="bg-blue-100 text-blue-600 text-[10px] px-1.5 py-0.5 rounded-full" id="unassignedCount">0</span>
+                </h2>
+                <div class="space-y-2">
+                    <input type="text" id="newTaskInput" placeholder="タスクを追加..." class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="flex space-x-1">
+                        <select id="newGenreSelect" class="flex-1 border border-slate-300 rounded-lg px-1.5 py-1 text-[10px] bg-white outline-none">
+                            <option value="study">勉強</option>
+                            <option value="hobby">趣味</option>
+                            <option value="life">生活</option>
+                            <option value="other">その他</option>
+                        </select>
+                        <button onclick="addTask()" class="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition text-[10px] font-medium whitespace-nowrap">追加</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="todoList" class="flex-1 overflow-y-auto p-3 space-y-2 sidebar-drop-zone"></div>
+            <div class="p-3 bg-blue-50 text-[9px] text-blue-500 border-t leading-tight">
+                カレンダーのタスクをここへ戻すと日付が解除されます
+            </div>
+        </aside>
+
+        <!-- Main Content: Full height and width calendar -->
+        <section class="flex-1 p-4 bg-slate-50 flex flex-col min-w-0">
+            <div class="calendar-container bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <!-- Day Header -->
+                <div class="grid grid-cols-7 text-center border-b bg-slate-100 flex-shrink-0">
+                    <div class="py-2 text-[10px] font-bold text-red-500 uppercase">Sun</div>
+                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Mon</div>
+                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Tue</div>
+                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Wed</div>
+                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Thu</div>
+                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Fri</div>
+                    <div class="py-2 text-[10px] font-bold text-blue-500 uppercase">Sat</div>
+                </div>
+                <!-- Scrollable Grid -->
+                <div id="calendarGrid" class="calendar-grid overflow-y-auto flex-1">
+                    <!-- JS fills this -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal remains the same but improved contrast -->
+    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 hidden z-50 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-white rounded-xl p-6 w-[400px] shadow-2xl">
+            <h3 class="text-md font-bold mb-4 text-slate-800 border-b pb-2">タスクの編集</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">タイトル</label>
+                    <input type="text" id="editTaskInput" class="w-full border p-2 rounded-lg text-sm focus:ring-1 focus:ring-blue-500 outline-none">
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">ジャンル</label>
+                        <select id="editGenreSelect" class="w-full border p-2 rounded-lg text-xs bg-white outline-none">
+                            <option value="study">勉強</option>
+                            <option value="hobby">趣味</option>
+                            <option value="life">生活</option>
+                            <option value="other">その他</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">ステータス</label>
+                        <div class="flex items-center h-10 space-x-2">
+                            <input type="checkbox" id="editTaskComplete" class="w-4 h-4 rounded text-blue-600">
+                            <span class="text-xs text-slate-600">完了済み</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 border-t pt-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">開始日</label>
+                        <input type="date" id="editDateStart" class="w-full border p-2 rounded-lg text-xs outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">終了日</label>
+                        <input type="date" id="editDateEnd" class="w-full border p-2 rounded-lg text-xs outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">繰り返し</label>
+                    <select id="editRepeatSelect" class="w-full border p-2 rounded-lg text-xs bg-white outline-none">
+                        <option value="none">なし</option>
+                        <option value="daily">毎日</option>
+                        <option value="weekly">毎週</option>
+                        <option value="monthly">毎月</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">メモ</label>
+                    <textarea id="editTaskNote" rows="2" class="w-full border p-2 rounded-lg text-xs outline-none focus:ring-1 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-between mt-6 pt-4 border-t">
+                <button onclick="deleteTaskFromModal()" class="text-xs text-red-500 hover:text-red-700 transition">タスクを削除</button>
+                <div class="flex space-x-2">
+                    <button onclick="closeModal()" class="px-4 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg text-xs transition">戻る</button>
+                    <button onclick="saveTaskEdit()" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium transition shadow-sm">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let tasks = [];
+        const STORAGE_KEY = 'smartflow_calendar_tasks_v3';
+        let currentDate = new Date();
+        let editingTaskId = null;
+
+        function loadData() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                tasks = JSON.parse(saved);
+            } else {
+                tasks = [
+                    { id: '1', text: '英単語 30個', date: formatUTCDate(new Date()), completed: false, genre: 'study', repeat: 'daily', note: '' }
+                ];
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+        }
+
+        window.onload = () => {
+            loadData();
+            renderAll();
+            setupSidebarDrop();
+        };
+
+        function renderAll() {
+            renderTodoList();
+            renderCalendar();
+            updateHeader();
+            saveData();
+        }
+
+        function setupSidebarDrop() {
+            const sidebarZone = document.getElementById('todoList');
+            sidebarZone.addEventListener('dragover', (e) => { e.preventDefault(); sidebarZone.classList.add('drag-over'); });
+            sidebarZone.addEventListener('dragleave', () => sidebarZone.classList.remove('drag-over'));
+            sidebarZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                sidebarZone.classList.remove('drag-over');
+                const taskId = e.dataTransfer.getData('text/plain');
+                assignTaskDate(taskId, null);
+            });
+        }
+
+        function renderTodoList() {
+            const todoList = document.getElementById('todoList');
+            const unassignedCount = document.getElementById('unassignedCount');
+            todoList.innerHTML = '';
+            
+            const unassignedTasks = tasks.filter(t => !t.date);
+            unassignedCount.innerText = unassignedTasks.length;
+            
+            if (unassignedTasks.length === 0) {
+                todoList.innerHTML = '<div class="text-center py-10 text-slate-300 text-[10px]">未割当のタスクはありません</div>';
+                return;
+            }
+
+            unassignedTasks.forEach(task => {
+                const el = document.createElement('div');
+                el.className = `task-item bg-white border border-slate-200 p-2 rounded-lg shadow-sm flex items-center space-x-2 group genre-${task.genre} ${task.completed ? 'task-completed' : ''}`;
+                el.draggable = true;
+                el.innerHTML = `
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleTaskStatus('${task.id}')" class="w-3.5 h-3.5 rounded text-blue-600">
+                    <span class="flex-1 text-xs font-medium truncate">${task.text}</span>
+                    <button onclick="openEditModalById('${task.id}')" class="opacity-0 group-hover:opacity-100 p-1 transition"><svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+                `;
+                el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', task.id); el.classList.add('opacity-50'); });
+                el.addEventListener('dragend', () => el.classList.remove('opacity-50'));
+                todoList.appendChild(el);
+            });
+        }
+
+        function addTask() {
+            const input = document.getElementById('newTaskInput');
+            const genre = document.getElementById('newGenreSelect').value;
+            if (!input.value.trim()) return;
+            tasks.push({
+                id: Date.now().toString(),
+                text: input.value.trim(),
+                date: null,
+                dateEnd: null,
+                completed: false,
+                genre: genre,
+                repeat: 'none',
+                note: ''
+            });
+            input.value = '';
+            renderAll();
+        }
+
+        function toggleTaskStatus(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) { task.completed = !task.completed; renderAll(); }
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            
+            for (let i = 0; i < firstDay.getDay(); i++) grid.appendChild(createEmptyCell());
+
+            const todayStr = formatUTCDate(new Date());
+
+            for (let day = 1; day <= lastDay.getDate(); day++) {
+                const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+                const cell = document.createElement('div');
+                cell.className = 'calendar-day border-r border-b border-slate-100';
+                cell.dataset.date = dateStr;
+
+                const dayNum = document.createElement('div');
+                const isTodayDate = isToday(year, month, day);
+                dayNum.className = `text-[10px] font-bold mb-1 w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0 ${isTodayDate ? 'bg-blue-600 text-white' : 'text-slate-400'}`;
+                dayNum.innerText = day;
+                cell.appendChild(dayNum);
+
+                const dayTasks = getTasksForDate(new Date(year, month, day));
+                if (dayTasks.some(t => !t.completed && dateStr < todayStr)) dayNum.classList.add('overdue');
+
+                dayTasks.forEach(task => {
+                    const taskEl = document.createElement('div');
+                    let rangeClass = "";
+                    if (task.date && task.dateEnd) {
+                        if (dateStr === task.date) rangeClass = "task-range-start";
+                        else if (dateStr === task.dateEnd) rangeClass = "task-range-end";
+                        else rangeClass = "task-range-mid";
+                    }
+
+                    taskEl.className = `calendar-task genre-${task.genre} ${task.completed ? 'task-completed' : ''} ${rangeClass}`;
+                    taskEl.draggable = true;
+                    
+                    let repeatLabel = "";
+                    if (task.repeat === 'daily') repeatLabel = "日";
+                    if (task.repeat === 'weekly') repeatLabel = "週";
+                    if (task.repeat === 'monthly') repeatLabel = "月";
+
+                    taskEl.innerHTML = `${repeatLabel ? `<span class="repeat-badge">${repeatLabel}</span>` : ''}${task.text}`;
+                    taskEl.onclick = (e) => { e.stopPropagation(); openEditModal(task); };
+                    
+                    taskEl.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.setData('text/plain', task.id);
+                        setTimeout(() => taskEl.classList.add('hidden'), 0);
+                    });
+                    taskEl.addEventListener('dragend', () => taskEl.classList.remove('hidden'));
+
+                    cell.appendChild(taskEl);
+                });
+
+                cell.addEventListener('dragover', (e) => { e.preventDefault(); cell.classList.add('drag-over'); });
+                cell.addEventListener('dragleave', () => cell.classList.remove('drag-over'));
+                cell.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    cell.classList.remove('drag-over');
+                    const taskId = e.dataTransfer.getData('text/plain');
+                    assignTaskDate(taskId, dateStr);
+                });
+
+                grid.appendChild(cell);
+            }
+        }
+
+        function getTasksForDate(targetDate) {
+            const targetStr = formatUTCDate(targetDate);
+            return tasks.filter(task => {
+                if (!task.date) return false;
+                if (task.dateEnd) return targetStr >= task.date && targetStr <= task.dateEnd;
+                if (task.date === targetStr) return true;
+                
+                const taskDate = new Date(task.date);
+                if (targetDate < taskDate) return false;
+
+                if (task.repeat === 'daily') return true;
+                if (task.repeat === 'weekly') return targetDate.getDay() === taskDate.getDay();
+                if (task.repeat === 'monthly') return targetDate.getDate() === taskDate.getDate();
+
+                return false;
+            });
+        }
+
+        function createEmptyCell() {
+            const cell = document.createElement('div');
+            cell.className = 'calendar-day bg-slate-50/20 border-r border-b border-slate-100';
+            return cell;
+        }
+
+        function formatUTCDate(date) {
+            return `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}`;
+        }
+
+        function isToday(y, m, d) {
+            const now = new Date();
+            return now.getFullYear() === y && now.getMonth() === m && now.getDate() === d;
+        }
+
+        function changeMonth(diff) {
+            currentDate.setMonth(currentDate.getMonth() + diff);
+            renderAll();
+        }
+
+        function updateHeader() {
+            document.getElementById('currentMonthDisplay').innerText = `${currentDate.getFullYear()}年 ${(currentDate.getMonth() + 1)}月`;
+        }
+
+        function assignTaskDate(taskId, date) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.date = date;
+                task.dateEnd = null; 
+                renderAll();
+            }
+        }
+
+        function openEditModalById(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) openEditModal(task);
+        }
+
+        function openEditModal(task) {
+            editingTaskId = task.id;
+            document.getElementById('editTaskInput').value = task.text;
+            document.getElementById('editGenreSelect').value = task.genre;
+            document.getElementById('editTaskComplete').checked = task.completed;
+            document.getElementById('editDateStart').value = task.date || '';
+            document.getElementById('editDateEnd').value = task.dateEnd || '';
+            document.getElementById('editRepeatSelect').value = task.repeat || 'none';
+            document.getElementById('editTaskNote').value = task.note || '';
+            document.getElementById('modalOverlay').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modalOverlay').classList.add('hidden');
+            editingTaskId = null;
+        }
+
+        function saveTaskEdit() {
+            const task = tasks.find(t => t.id === editingTaskId);
+            if (task) {
+                task.text = document.getElementById('editTaskInput').value.trim() || task.text;
+                task.genre = document.getElementById('editGenreSelect').value;
+                task.completed = document.getElementById('editTaskComplete').checked;
+                task.date = document.getElementById('editDateStart').value || null;
+                task.dateEnd = document.getElementById('editDateEnd').value || null;
+                task.repeat = document.getElementById('editRepeatSelect').value;
+                task.note = document.getElementById('editTaskNote').value;
+                renderAll();
+                closeModal();
+            }
+        }
+
+        function deleteTaskFromModal() {
+            if (editingTaskId) {
+                tasks = tasks.filter(t => t.id !== editingTaskId);
+                renderAll();
+                closeModal();
+            }
+        }
+
+        document.getElementById('newTaskInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') addTask(); });
+    </script>
+</body>
+</html>
