@@ -9,29 +9,87 @@
     <meta property="og:title" content="SmartFlow ToDo & Calendar Pro">
     <meta property="og:description" content="タスクをドラッグ&ドロップ(タップ)でカレンダーに割り当てて管理できるToDo & カレンダーアプリ。">
     <meta name="twitter:card" content="summary">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700;800&family=Noto+Sans+JP:wght@400;500;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@700;800&family=Inter:wght@300;400;500;600&display=swap');
+        :root {
+            --bg: #faf5ec;
+            --surface: #fffdf9;
+            --ink: #2b2420;
+            --ink-soft: #7a6f61;
+            --ink-faint: #7c6c56;
+            --maroon: #7a0000;
+            --maroon-dark: #560000;
+            --gold: #a97a1f;
+            --gold-soft: #cda75a;
+            --border: #ddd0ba;
+        }
 
         body {
-            font-family: 'Inter', 'Noto Sans JP', sans-serif;
-            background-color: #f8fafc;
+            font-family: 'Noto Sans JP', 'Inter', sans-serif;
+            color: var(--ink);
+            background: repeating-linear-gradient(135deg, rgba(169,122,31,0.035) 0px, rgba(169,122,31,0.035) 1px, transparent 1px, transparent 16px), var(--bg);
             overflow: hidden; /* Prevent body scroll */
         }
 
         .font-heading { font-family: 'Shippori Mincho', serif; }
 
+        /* Corner-bracket accent used sparingly on prominent panels/modals */
+        .corner-mark {
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--gold);
+            opacity: 0.55;
+            pointer-events: none;
+        }
+        .corner-mark.tl { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+        .corner-mark.br { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+        .panel-framed { position: relative; }
+
+        /* Pill buttons */
+        .btn-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--surface);
+            color: var(--ink-soft);
+            box-shadow: 0 1px 2px rgba(43,36,32,0.06);
+            transition: transform 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .btn-pill:hover {
+            transform: translateY(-2px);
+            border-color: var(--maroon);
+            color: var(--maroon);
+            box-shadow: 0 4px 10px rgba(122,0,0,0.12);
+        }
+        .btn-pill-primary {
+            background: linear-gradient(180deg, var(--maroon), var(--maroon-dark));
+            color: #fff5e8;
+            border: 1px solid var(--maroon-dark);
+        }
+        .btn-pill-primary:hover {
+            transform: translateY(-2px);
+            color: #fff5e8;
+            box-shadow: 0 6px 14px rgba(86,0,0,0.28);
+        }
+
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: 1px;
-            background-color: #e2e8f0;
-            border: 1px solid #e2e8f0;
+            background-color: var(--border);
+            border: 1px solid var(--border);
             height: 100%; /* Fill container */
         }
 
         .calendar-day {
-            background-color: white;
+            background-color: var(--surface);
             padding: 4px;
             display: flex;
             flex-direction: column;
@@ -40,19 +98,21 @@
         }
 
         .calendar-day.drag-over {
-            background-color: #eff6ff;
+            background-color: #f3ead6;
         }
 
         .task-item {
             cursor: grab;
             transition: transform 0.1s, box-shadow 0.1s;
+            background: var(--surface);
+            border: 1px solid var(--border);
         }
 
         .calendar-task {
             font-size: 0.7rem;
             padding: 2px 6px;
             margin-bottom: 2px;
-            border-radius: 4px;
+            border-radius: 3px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -61,16 +121,16 @@
             flex-shrink: 0;
         }
 
-        /* Genres */
-        .genre-study { background-color: #dbeafe; color: #1e40af; border-left: 3px solid #3b82f6; }
-        .genre-hobby { background-color: #fef3c7; color: #92400e; border-left: 3px solid #f59e0b; }
-        .genre-life { background-color: #d1fae5; color: #065f46; border-left: 3px solid #10b981; }
-        .genre-other { background-color: #f1f5f9; color: #475569; border-left: 3px solid #94a3b8; }
+        /* Genres — warm-palette-compatible, still distinct */
+        .genre-study { background-color: #e6edf4; color: #2f4a63; border-left: 3px solid #5b7fa6; }
+        .genre-hobby { background-color: #f7ecd2; color: #7a5a12; border-left: 3px solid var(--gold); }
+        .genre-life  { background-color: #e9f0e1; color: #3f5c34; border-left: 3px solid #6b8f57; }
+        .genre-other { background-color: #efe9df; color: #6b6055; border-left: 3px solid #a89a86; }
 
         .task-completed {
-            background-color: #f8fafc !important;
-            color: #cbd5e1 !important;
-            border-left-color: #e2e8f0 !important;
+            background-color: var(--bg) !important;
+            color: var(--border) !important;
+            border-left-color: var(--border) !important;
             text-decoration: line-through;
             opacity: 0.7;
         }
@@ -80,15 +140,15 @@
         .task-range-mid { border-radius: 0; margin-left: -4px; margin-right: -4px; z-index: 0; }
         .task-range-end { border-top-left-radius: 0; border-bottom-left-radius: 0; margin-left: -4px; z-index: 1; }
 
-        .sidebar { width: 260px; border-right: 1px solid #e2e8f0; flex-shrink: 0; }
-        .overdue { color: #ef4444 !important; font-weight: 800; }
-        .sidebar-drop-zone.drag-over { background-color: #f1f5f9; border: 2px dashed #a97a1f; }
-        
+        .sidebar { width: 260px; border-right: 1px solid var(--border); flex-shrink: 0; }
+        .overdue { color: var(--maroon) !important; font-weight: 800; }
+        .sidebar-drop-zone.drag-over { background-color: var(--bg); border: 2px dashed var(--gold); }
+
         .repeat-badge {
             display: inline-block;
             font-size: 8px;
             padding: 0 3px;
-            background: rgba(0,0,0,0.1);
+            background: rgba(122,0,0,0.12);
             border-radius: 3px;
             margin-right: 3px;
         }
@@ -107,25 +167,25 @@
         @media (max-width: 768px) {
             body { overflow: auto; }
             main.flex-1 { flex-direction: column; overflow: visible; }
-            .sidebar { width: 100%; height: 200px; border-right: none; border-bottom: 1px solid #e2e8f0; }
+            .sidebar { width: 100%; height: 200px; border-right: none; border-bottom: 1px solid var(--border); }
             .calendar-container { min-height: 480px; }
         }
     </style>
 </head>
 <body class="h-screen flex flex-col">
 
-    <header class="bg-white border-b border-slate-200 p-3 flex justify-between items-center shadow-sm z-10 flex-shrink-0">
-        <h1 class="font-heading text-lg font-bold text-[#7a0000] flex items-center">
-            <svg class="w-5 h-5 mr-2 text-[#a97a1f]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+    <header class="border-b p-3 flex justify-between items-center shadow-sm z-10 flex-shrink-0" style="background: var(--surface); border-color: var(--border);">
+        <h1 class="font-heading text-lg font-bold flex items-center" style="color: var(--maroon);">
+            <svg class="w-5 h-5 mr-2" style="color: var(--gold);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
             SmartFlow
         </h1>
         <div class="flex items-center space-x-4">
-            <span id="currentMonthDisplay" class="text-md font-semibold text-slate-700"></span>
-            <div class="flex bg-slate-100 rounded-lg p-0.5">
-                <button onclick="changeMonth(-1)" class="p-1.5 hover:bg-white rounded-md transition">
+            <span id="currentMonthDisplay" class="text-md font-semibold" style="color: var(--ink);"></span>
+            <div class="flex space-x-1">
+                <button onclick="changeMonth(-1)" class="btn-pill w-7 h-7">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15 19l-7-7 7-7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 </button>
-                <button onclick="changeMonth(1)" class="p-1.5 hover:bg-white rounded-md transition">
+                <button onclick="changeMonth(1)" class="btn-pill w-7 h-7">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 </button>
             </div>
@@ -134,44 +194,48 @@
 
     <main class="flex-1 flex overflow-hidden">
         <!-- Sidebar: Smaller width for more calendar space -->
-        <aside class="sidebar bg-white flex flex-col">
-            <div class="p-4 border-b bg-slate-50">
-                <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center justify-between">
+        <aside class="sidebar panel-framed flex flex-col" style="background: var(--surface);">
+            <span class="corner-mark tl"></span>
+            <span class="corner-mark br"></span>
+            <div class="p-4 border-b" style="background: var(--bg); border-color: var(--border);">
+                <h2 class="text-sm font-semibold mb-3 flex items-center justify-between" style="color: var(--ink);">
                     <span>未割当</span>
-                    <span class="bg-[#fbf1de] text-[#7a0000] text-[10px] px-1.5 py-0.5 rounded-full" id="unassignedCount">0</span>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full" style="background: #f7ecd2; color: var(--maroon);" id="unassignedCount">0</span>
                 </h2>
                 <div class="space-y-2">
-                    <input type="text" id="newTaskInput" placeholder="タスクを追加..." class="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#a97a1f]">
+                    <input type="text" id="newTaskInput" placeholder="タスクを追加..." class="w-full rounded-lg px-3 py-1.5 text-xs focus:outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);" onfocus="this.style.boxShadow='0 0 0 2px rgba(169,122,31,0.35)'" onblur="this.style.boxShadow='none'">
                     <div class="flex space-x-1">
-                        <select id="newGenreSelect" class="flex-1 border border-slate-300 rounded-lg px-1.5 py-1 text-[10px] bg-white outline-none">
+                        <select id="newGenreSelect" class="flex-1 rounded-lg px-1.5 py-1 text-[10px] outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);">
                             <option value="study">勉強</option>
                             <option value="hobby">趣味</option>
                             <option value="life">生活</option>
                             <option value="other">その他</option>
                         </select>
-                        <button onclick="addTask()" class="bg-[#7a0000] text-white px-3 py-1 rounded-lg hover:bg-[#560000] transition text-[10px] font-medium whitespace-nowrap">追加</button>
+                        <button onclick="addTask()" class="btn-pill btn-pill-primary px-3 py-1 text-[10px] font-medium whitespace-nowrap">追加</button>
                     </div>
                 </div>
             </div>
 
             <div id="todoList" class="flex-1 overflow-y-auto p-3 space-y-2 sidebar-drop-zone"></div>
-            <div class="p-3 bg-[#fbf1de] text-[9px] text-[#7a0000] border-t leading-tight">
+            <div class="p-3 text-[9px] border-t leading-tight" style="background: var(--bg); color: var(--maroon); border-color: var(--border);">
                 カレンダーのタスクをここへ戻すと日付が解除されます
             </div>
         </aside>
 
         <!-- Main Content: Full height and width calendar -->
-        <section class="flex-1 p-4 bg-slate-50 flex flex-col min-w-0">
-            <div class="calendar-container bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+        <section class="flex-1 p-4 flex flex-col min-w-0">
+            <div class="calendar-container panel-framed rounded-md shadow-sm overflow-hidden" style="background: var(--surface); border: 1px solid var(--border);">
+                <span class="corner-mark tl"></span>
+                <span class="corner-mark br"></span>
                 <!-- Day Header -->
-                <div class="grid grid-cols-7 text-center border-b bg-slate-100 flex-shrink-0">
-                    <div class="py-2 text-[10px] font-bold text-red-500 uppercase">Sun</div>
-                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Mon</div>
-                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Tue</div>
-                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Wed</div>
-                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Thu</div>
-                    <div class="py-2 text-[10px] font-bold text-slate-500 uppercase">Fri</div>
-                    <div class="py-2 text-[10px] font-bold text-[#a97a1f] uppercase">Sat</div>
+                <div class="grid grid-cols-7 text-center border-b flex-shrink-0" style="background: var(--bg); border-color: var(--border);">
+                    <div class="py-2 text-[10px] font-bold uppercase" style="color: var(--maroon);">Sun</div>
+                    <div class="py-2 text-[10px] font-bold uppercase" style="color: var(--ink-soft);">Mon</div>
+                    <div class="py-2 text-[10px] font-bold uppercase" style="color: var(--ink-soft);">Tue</div>
+                    <div class="py-2 text-[10px] font-bold uppercase" style="color: var(--ink-soft);">Wed</div>
+                    <div class="py-2 text-[10px] font-bold uppercase" style="color: var(--ink-soft);">Thu</div>
+                    <div class="py-2 text-[10px] font-bold uppercase" style="color: var(--ink-soft);">Fri</div>
+                    <div class="py-2 text-[10px] font-bold uppercase" style="color: var(--gold);">Sat</div>
                 </div>
                 <!-- Scrollable Grid -->
                 <div id="calendarGrid" class="calendar-grid overflow-y-auto flex-1">
@@ -182,19 +246,21 @@
     </main>
 
     <!-- Modal remains the same but improved contrast -->
-    <div id="modalOverlay" class="fixed inset-0 bg-slate-900/60 hidden z-50 flex items-center justify-center backdrop-blur-sm">
-        <div class="bg-white rounded-xl p-6 w-[400px] shadow-2xl">
-            <h3 class="text-md font-bold mb-4 text-slate-800 border-b pb-2">タスクの編集</h3>
+    <div id="modalOverlay" class="fixed inset-0 hidden z-50 flex items-center justify-center backdrop-blur-sm" style="background: rgba(43,36,32,0.55);">
+        <div class="panel-framed rounded-md p-6 w-[400px] shadow-2xl" style="background: var(--surface); border: 1px solid var(--border);">
+            <span class="corner-mark tl"></span>
+            <span class="corner-mark br"></span>
+            <h3 class="font-heading text-md font-bold mb-4 border-b pb-2" style="color: var(--ink); border-color: var(--gold-soft);">タスクの編集</h3>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">タイトル</label>
-                    <input type="text" id="editTaskInput" class="w-full border p-2 rounded-lg text-sm focus:ring-1 focus:ring-[#a97a1f] outline-none">
+                    <label class="block text-[10px] font-bold uppercase mb-1" style="color: var(--ink-faint);">タイトル</label>
+                    <input type="text" id="editTaskInput" class="w-full p-2 rounded-lg text-sm outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);">
                 </div>
-                
+
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">ジャンル</label>
-                        <select id="editGenreSelect" class="w-full border p-2 rounded-lg text-xs bg-white outline-none">
+                        <label class="block text-[10px] font-bold uppercase mb-1" style="color: var(--ink-faint);">ジャンル</label>
+                        <select id="editGenreSelect" class="w-full p-2 rounded-lg text-xs outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);">
                             <option value="study">勉強</option>
                             <option value="hobby">趣味</option>
                             <option value="life">生活</option>
@@ -202,28 +268,28 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">ステータス</label>
+                        <label class="block text-[10px] font-bold uppercase mb-1" style="color: var(--ink-faint);">ステータス</label>
                         <div class="flex items-center h-10 space-x-2">
-                            <input type="checkbox" id="editTaskComplete" class="w-4 h-4 rounded text-[#7a0000]">
-                            <span class="text-xs text-slate-600">完了済み</span>
+                            <input type="checkbox" id="editTaskComplete" class="w-4 h-4 rounded" style="accent-color: var(--maroon);">
+                            <span class="text-xs" style="color: var(--ink-soft);">完了済み</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-3 border-t pt-3">
+                <div class="grid grid-cols-2 gap-3 border-t pt-3" style="border-color: var(--border);">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">開始日</label>
-                        <input type="date" id="editDateStart" class="w-full border p-2 rounded-lg text-xs outline-none">
+                        <label class="block text-[10px] font-bold uppercase mb-1" style="color: var(--ink-faint);">開始日</label>
+                        <input type="date" id="editDateStart" class="w-full p-2 rounded-lg text-xs outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);">
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">終了日</label>
-                        <input type="date" id="editDateEnd" class="w-full border p-2 rounded-lg text-xs outline-none">
+                        <label class="block text-[10px] font-bold uppercase mb-1" style="color: var(--ink-faint);">終了日</label>
+                        <input type="date" id="editDateEnd" class="w-full p-2 rounded-lg text-xs outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);">
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">繰り返し</label>
-                    <select id="editRepeatSelect" class="w-full border p-2 rounded-lg text-xs bg-white outline-none">
+                    <label class="block text-[10px] font-bold uppercase mb-1" style="color: var(--ink-faint);">繰り返し</label>
+                    <select id="editRepeatSelect" class="w-full p-2 rounded-lg text-xs outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);">
                         <option value="none">なし</option>
                         <option value="daily">毎日</option>
                         <option value="weekly">毎週</option>
@@ -232,15 +298,15 @@
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">メモ</label>
-                    <textarea id="editTaskNote" rows="2" class="w-full border p-2 rounded-lg text-xs outline-none focus:ring-1 focus:ring-[#a97a1f]"></textarea>
+                    <label class="block text-[10px] font-bold uppercase mb-1" style="color: var(--ink-faint);">メモ</label>
+                    <textarea id="editTaskNote" rows="2" class="w-full p-2 rounded-lg text-xs outline-none" style="border: 1px solid var(--border); background: var(--surface); color: var(--ink);"></textarea>
                 </div>
             </div>
-            <div class="flex justify-between mt-6 pt-4 border-t">
-                <button onclick="deleteTaskFromModal()" class="text-xs text-red-500 hover:text-red-700 transition">タスクを削除</button>
+            <div class="flex justify-between mt-6 pt-4 border-t" style="border-color: var(--border);">
+                <button onclick="deleteTaskFromModal()" class="text-xs transition" style="color: var(--maroon);" onmouseover="this.style.color='var(--maroon-dark)'" onmouseout="this.style.color='var(--maroon)'">タスクを削除</button>
                 <div class="flex space-x-2">
-                    <button onclick="closeModal()" class="px-4 py-1.5 text-slate-500 hover:bg-slate-100 rounded-lg text-xs transition">戻る</button>
-                    <button onclick="saveTaskEdit()" class="px-4 py-1.5 bg-[#7a0000] text-white rounded-lg hover:bg-[#560000] text-xs font-medium transition shadow-sm">保存</button>
+                    <button onclick="closeModal()" class="btn-pill px-4 py-1.5 text-xs">戻る</button>
+                    <button onclick="saveTaskEdit()" class="btn-pill btn-pill-primary px-4 py-1.5 text-xs font-medium">保存</button>
                 </div>
             </div>
         </div>
@@ -326,24 +392,26 @@
             const todoList = document.getElementById('todoList');
             const unassignedCount = document.getElementById('unassignedCount');
             todoList.innerHTML = '';
-            
+
             const unassignedTasks = tasks.filter(t => !t.date);
             unassignedCount.innerText = unassignedTasks.length;
-            
+
             if (unassignedTasks.length === 0) {
-                todoList.innerHTML = '<div class="text-center py-10 text-slate-300 text-[10px]">未割当のタスクはありません</div>';
+                todoList.innerHTML = '<div class="text-center py-10 text-[10px]" style="color: var(--border);">未割当のタスクはありません</div>';
                 return;
             }
 
             unassignedTasks.forEach(task => {
                 const isSelected = selectedTaskId === task.id;
                 const el = document.createElement('div');
-                el.className = `task-item bg-white border p-2 rounded-lg shadow-sm flex items-center space-x-2 group genre-${task.genre} ${task.completed ? 'task-completed' : ''} ${isSelected ? 'border-[#a97a1f] ring-2 ring-[#a97a1f]' : 'border-slate-200'}`;
+                el.className = `task-item p-2 rounded-lg shadow-sm flex items-center space-x-2 group genre-${task.genre} ${task.completed ? 'task-completed' : ''}`;
+                el.style.borderColor = isSelected ? 'var(--gold)' : 'var(--border)';
+                el.style.boxShadow = isSelected ? '0 0 0 2px rgba(169,122,31,0.35)' : '';
                 el.draggable = true;
                 el.innerHTML = `
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleTaskStatus('${task.id}')" class="w-3.5 h-3.5 rounded text-[#7a0000]">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleTaskStatus('${task.id}')" class="w-3.5 h-3.5 rounded" style="accent-color: var(--maroon);">
                     <span class="flex-1 text-xs font-medium truncate">${escapeHtml(task.text)}</span>
-                    <button onclick="event.stopPropagation(); openEditModalById('${task.id}')" class="opacity-0 group-hover:opacity-100 p-1 transition"><svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+                    <button onclick="event.stopPropagation(); openEditModalById('${task.id}')" class="opacity-0 group-hover:opacity-100 p-1 transition"><svg class="w-3.5 h-3.5" style="color: var(--ink-faint);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 `;
                 // マウスのドラッグ&ドロップ(PC)はそのまま維持しつつ、
                 // タップ選択(スマホ)にも両対応させる
@@ -355,7 +423,8 @@
 
             if (selectedTaskId) {
                 const hint = document.createElement('div');
-                hint.className = 'text-center text-[10px] text-[#7a0000] font-medium py-2';
+                hint.className = 'text-center text-[10px] font-medium py-2';
+                hint.style.color = 'var(--maroon)';
                 hint.textContent = 'カレンダーの日付をタップして割り当て';
                 todoList.appendChild(hint);
             }
@@ -391,7 +460,7 @@
             const month = currentDate.getMonth();
             const firstDay = new Date(year, month, 1);
             const lastDay = new Date(year, month + 1, 0);
-            
+
             for (let i = 0; i < firstDay.getDay(); i++) grid.appendChild(createEmptyCell());
 
             const todayStr = formatUTCDate(new Date());
@@ -399,13 +468,17 @@
             for (let day = 1; day <= lastDay.getDate(); day++) {
                 const dateStr = `${year}-${(month + 1).toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
                 const cell = document.createElement('div');
-                cell.className = 'calendar-day border-r border-b border-slate-100';
+                cell.className = 'calendar-day';
+                cell.style.borderRight = '1px solid var(--border)';
+                cell.style.borderBottom = '1px solid var(--border)';
                 cell.dataset.date = dateStr;
                 cell.addEventListener('click', () => handleDayCellClick(dateStr));
 
                 const dayNum = document.createElement('div');
                 const isTodayDate = isToday(year, month, day);
-                dayNum.className = `text-[10px] font-bold mb-1 w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0 ${isTodayDate ? 'bg-[#7a0000] text-white' : 'text-slate-400'}`;
+                dayNum.className = `text-[10px] font-bold mb-1 w-5 h-5 flex items-center justify-center rounded-full flex-shrink-0`;
+                dayNum.style.background = isTodayDate ? 'var(--maroon)' : 'transparent';
+                dayNum.style.color = isTodayDate ? '#fff5e8' : 'var(--ink-soft)';
                 dayNum.innerText = day;
                 cell.appendChild(dayNum);
 
@@ -423,7 +496,7 @@
 
                     taskEl.className = `calendar-task genre-${task.genre} ${task.completed ? 'task-completed' : ''} ${rangeClass}`;
                     taskEl.draggable = true;
-                    
+
                     let repeatLabel = "";
                     if (task.repeat === 'daily') repeatLabel = "日";
                     if (task.repeat === 'weekly') repeatLabel = "週";
@@ -431,7 +504,7 @@
 
                     taskEl.innerHTML = `${repeatLabel ? `<span class="repeat-badge">${repeatLabel}</span>` : ''}${escapeHtml(task.text)}`;
                     taskEl.onclick = (e) => { e.stopPropagation(); openEditModal(task); };
-                    
+
                     taskEl.addEventListener('dragstart', (e) => {
                         e.dataTransfer.setData('text/plain', task.id);
                         setTimeout(() => taskEl.classList.add('hidden'), 0);
@@ -460,7 +533,7 @@
                 if (!task.date) return false;
                 if (task.dateEnd) return targetStr >= task.date && targetStr <= task.dateEnd;
                 if (task.date === targetStr) return true;
-                
+
                 const taskDate = new Date(task.date);
                 if (targetDate < taskDate) return false;
 
@@ -474,7 +547,10 @@
 
         function createEmptyCell() {
             const cell = document.createElement('div');
-            cell.className = 'calendar-day bg-slate-50/20 border-r border-b border-slate-100';
+            cell.className = 'calendar-day';
+            cell.style.background = 'rgba(122,0,0,0.02)';
+            cell.style.borderRight = '1px solid var(--border)';
+            cell.style.borderBottom = '1px solid var(--border)';
             return cell;
         }
 
@@ -500,7 +576,7 @@
             const task = tasks.find(t => t.id === taskId);
             if (task) {
                 task.date = date;
-                task.dateEnd = null; 
+                task.dateEnd = null;
                 renderAll();
             }
         }
