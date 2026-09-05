@@ -237,6 +237,14 @@
         let currentDate = new Date();
         let editingTaskId = null;
 
+        // タスク名はユーザー入力をそのままinnerHTMLに差し込んでいたため、
+        // <script>等を含む文字列を入力するとDOM XSSになっていた
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
         function loadData() {
             const saved = localStorage.getItem(STORAGE_KEY);
             tasks = saved ? JSON.parse(saved) : [];
@@ -290,7 +298,7 @@
                 el.draggable = true;
                 el.innerHTML = `
                     <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleTaskStatus('${task.id}')" class="w-3.5 h-3.5 rounded text-[#7a0000]">
-                    <span class="flex-1 text-xs font-medium truncate">${task.text}</span>
+                    <span class="flex-1 text-xs font-medium truncate">${escapeHtml(task.text)}</span>
                     <button onclick="openEditModalById('${task.id}')" class="opacity-0 group-hover:opacity-100 p-1 transition"><svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 `;
                 el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', task.id); el.classList.add('opacity-50'); });
@@ -366,7 +374,7 @@
                     if (task.repeat === 'weekly') repeatLabel = "週";
                     if (task.repeat === 'monthly') repeatLabel = "月";
 
-                    taskEl.innerHTML = `${repeatLabel ? `<span class="repeat-badge">${repeatLabel}</span>` : ''}${task.text}`;
+                    taskEl.innerHTML = `${repeatLabel ? `<span class="repeat-badge">${repeatLabel}</span>` : ''}${escapeHtml(task.text)}`;
                     taskEl.onclick = (e) => { e.stopPropagation(); openEditModal(task); };
                     
                     taskEl.addEventListener('dragstart', (e) => {
