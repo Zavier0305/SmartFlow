@@ -276,7 +276,21 @@
 
         function loadData() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            tasks = saved ? JSON.parse(saved) : [];
+            if (!saved) {
+                tasks = [];
+                return;
+            }
+            try {
+                tasks = JSON.parse(saved);
+            } catch (e) {
+                // 保存データが壊れていると、ここで例外が起きてアプリ全体が
+                // 真っ白のまま初期化に失敗し、ユーザーには何も表示されず
+                // 復旧手段もない状態になっていた。壊れたデータは別キーに
+                // 退避してから空の状態で起動できるようにする
+                console.error('タスクデータの読み込みに失敗しました。壊れたデータを退避します。', e);
+                localStorage.setItem(STORAGE_KEY + '_corrupted_backup', saved);
+                tasks = [];
+            }
         }
 
         function saveData() {
