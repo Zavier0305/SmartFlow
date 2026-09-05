@@ -188,6 +188,7 @@
                 <button onclick="changeMonth(1)" class="btn-pill w-7 h-7">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
                 </button>
+                <button onclick="openTutorial()" class="btn-pill w-7 h-7 text-xs font-bold" title="使い方を見る" aria-label="使い方を見る">?</button>
             </div>
         </div>
     </header>
@@ -312,9 +313,51 @@
         </div>
     </div>
 
+    <!-- Tutorial modal: shown automatically on first visit, reopenable via the "?" pill button -->
+    <div id="tutorialOverlay" class="fixed inset-0 hidden z-50 flex items-center justify-center backdrop-blur-sm p-4" style="background: rgba(43,36,32,0.55);">
+        <div class="panel-framed rounded-md p-6 w-[480px] max-w-full max-h-[85vh] overflow-y-auto shadow-2xl" style="background: var(--surface); border: 1px solid var(--border);">
+            <span class="corner-mark tl"></span>
+            <span class="corner-mark br"></span>
+            <h3 class="font-heading text-md font-bold mb-1 border-b pb-2" style="color: var(--ink); border-color: var(--gold-soft);">SmartFlow の使い方</h3>
+            <p class="text-[10px] mb-4" style="color: var(--ink-faint);">タスクとカレンダーをつなげて予定を管理するアプリです。基本の使い方をかんたんに紹介します。</p>
+
+            <div class="space-y-3">
+                <div>
+                    <h4 class="text-xs font-bold mb-0.5" style="color: var(--maroon);">1. タスクを追加する</h4>
+                    <p class="text-[11px] leading-relaxed" style="color: var(--ink-soft);">左側の入力欄にやることを入力し、ジャンル(勉強・趣味・生活・その他)を選んで「追加」を押します。Enterキーでも追加できます。追加したタスクは、まだ日付が決まっていない「未割当」リストに入ります。</p>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold mb-0.5" style="color: var(--maroon);">2. カレンダーの日付に割り当てる</h4>
+                    <p class="text-[11px] leading-relaxed" style="color: var(--ink-soft);">パソコンでは、タスクを指でつかむようにドラッグして、カレンダーの日付の上でドロップします。スマホ・タブレットではドラッグの代わりに、タスクをタップして選択(金色に光ります)し、続けてカレンダーの日付をタップすると割り当てられます。</p>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold mb-0.5" style="color: var(--maroon);">3. 完了にする</h4>
+                    <p class="text-[11px] leading-relaxed" style="color: var(--ink-soft);">未割当リストではタスク左のチェックボックスをタップすると完了(取り消し線)になります。カレンダーに割り当て済みのタスクは、タスクをタップして編集画面を開き、「完了済み」にチェックを入れます。</p>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold mb-0.5" style="color: var(--maroon);">4. 編集・削除する</h4>
+                    <p class="text-[11px] leading-relaxed" style="color: var(--ink-soft);">未割当タスクの鉛筆アイコン、またはカレンダー上のタスクをタップすると編集画面が開きます。タイトル・ジャンル・開始日/終了日・繰り返し・メモを変更でき、「タスクを削除」でそのタスクを消せます。</p>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold mb-0.5" style="color: var(--maroon);">5. 期間・繰り返しの設定</h4>
+                    <p class="text-[11px] leading-relaxed" style="color: var(--ink-soft);">編集画面で開始日と終了日の両方を設定すると、その期間ずっとカレンダーに帯状で表示されます。「繰り返し」で毎日・毎週・毎月を選ぶと、開始日以降ずっと同じ曜日・日にちに自動で表示されます(日/週/月のバッジが付きます)。</p>
+                </div>
+                <div>
+                    <h4 class="text-xs font-bold mb-0.5" style="color: var(--maroon);">6. 割り当てを解除する</h4>
+                    <p class="text-[11px] leading-relaxed" style="color: var(--ink-soft);">カレンダー上のタスクを左の未割当リストへドラッグして戻すか、編集画面で開始日を空にすると、日付の割り当てが解除されます。</p>
+                </div>
+            </div>
+
+            <div class="flex justify-end mt-6 pt-4 border-t" style="border-color: var(--border);">
+                <button onclick="closeTutorial()" class="btn-pill btn-pill-primary px-4 py-1.5 text-xs font-medium">わかった、はじめる</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let tasks = [];
         const STORAGE_KEY = 'smartflow_calendar_tasks_v3';
+        const TUTORIAL_SEEN_KEY = 'smartflow_tutorial_seen';
         let currentDate = new Date();
         let editingTaskId = null;
         // HTML5のドラッグ&ドロップAPIはタッチ操作(スマホ)では発火しないため、
@@ -367,7 +410,19 @@
             loadData();
             renderAll();
             setupSidebarDrop();
+            if (!localStorage.getItem(TUTORIAL_SEEN_KEY)) {
+                openTutorial();
+            }
         };
+
+        function openTutorial() {
+            document.getElementById('tutorialOverlay').classList.remove('hidden');
+        }
+
+        function closeTutorial() {
+            document.getElementById('tutorialOverlay').classList.add('hidden');
+            localStorage.setItem(TUTORIAL_SEEN_KEY, '1');
+        }
 
         function renderAll() {
             renderTodoList();
