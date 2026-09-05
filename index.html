@@ -246,6 +246,20 @@
         const STORAGE_KEY = 'smartflow_calendar_tasks_v3';
         let currentDate = new Date();
         let editingTaskId = null;
+        // HTML5のドラッグ&ドロップAPIはタッチ操作(スマホ)では発火しないため、
+        // 「タスクをタップして選択→日付をタップして割り当て」という代替操作を用意する
+        let selectedTaskId = null;
+
+        function selectTaskForAssign(taskId) {
+            selectedTaskId = (selectedTaskId === taskId) ? null : taskId;
+            renderTodoList();
+        }
+
+        function handleDayCellClick(dateStr) {
+            if (!selectedTaskId) return;
+            assignTaskDate(selectedTaskId, dateStr);
+            selectedTaskId = null;
+        }
 
         // タスク名はユーザー入力をそのままinnerHTMLに差し込んでいたため、
         // <script>等を含む文字列を入力するとDOM XSSになっていた
@@ -303,18 +317,29 @@
             }
 
             unassignedTasks.forEach(task => {
+                const isSelected = selectedTaskId === task.id;
                 const el = document.createElement('div');
-                el.className = `task-item bg-white border border-slate-200 p-2 rounded-lg shadow-sm flex items-center space-x-2 group genre-${task.genre} ${task.completed ? 'task-completed' : ''}`;
+                el.className = `task-item bg-white border p-2 rounded-lg shadow-sm flex items-center space-x-2 group genre-${task.genre} ${task.completed ? 'task-completed' : ''} ${isSelected ? 'border-[#a97a1f] ring-2 ring-[#a97a1f]' : 'border-slate-200'}`;
                 el.draggable = true;
                 el.innerHTML = `
-                    <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="toggleTaskStatus('${task.id}')" class="w-3.5 h-3.5 rounded text-[#7a0000]">
+                    <input type="checkbox" ${task.completed ? 'checked' : ''} onclick="event.stopPropagation(); toggleTaskStatus('${task.id}')" class="w-3.5 h-3.5 rounded text-[#7a0000]">
                     <span class="flex-1 text-xs font-medium truncate">${escapeHtml(task.text)}</span>
-                    <button onclick="openEditModalById('${task.id}')" class="opacity-0 group-hover:opacity-100 p-1 transition"><svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+                    <button onclick="event.stopPropagation(); openEditModalById('${task.id}')" class="opacity-0 group-hover:opacity-100 p-1 transition"><svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
                 `;
+                // マウスのドラッグ&ドロップ(PC)はそのまま維持しつつ、
+                // タップ選択(スマホ)にも両対応させる
+                el.addEventListener('click', () => selectTaskForAssign(task.id));
                 el.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', task.id); el.classList.add('opacity-50'); });
                 el.addEventListener('dragend', () => el.classList.remove('opacity-50'));
                 todoList.appendChild(el);
             });
+
+            if (selectedTaskId) {
+                const hint = document.createElement('div');
+                hint.className = 'text-center text-[10px] text-[#7a0000] font-medium py-2';
+                hint.textContent = 'カレンダーの日付をタップして割り当て';
+                todoList.appendChild(hint);
+            }
         }
 
         function addTask() {
@@ -357,6 +382,7 @@
                 const cell = document.createElement('div');
                 cell.className = 'calendar-day border-r border-b border-slate-100';
                 cell.dataset.date = dateStr;
+                cell.addEventListener('click', () => handleDayCellClick(dateStr));
 
                 const dayNum = document.createElement('div');
                 const isTodayDate = isToday(year, month, day);
